@@ -8,3 +8,5 @@ Object Detection
 - https://towardsdatascience.com/building-your-own-object-detector-pytorch-vs-tensorflow-and-how-to-even-get-started-1d314691d4ae
 - https://medium.com/@smallfishbigsea/faster-r-cnn-explained-864d4fb7e3f8
 
+Basketball data Box link - https://app.box.com/folder/122398474710
+
