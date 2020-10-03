@@ -18,7 +18,7 @@ class VideoProcessing():
     def __init__(self):
         pass
 
-    def get_frames_from_video(self,video_path, num_frames=16):
+    def get_frames_from_video(self, video_path, num_frames=16):
         vidcap = cv2.VideoCapture(video_path)
         frames = []
         # check if video requires rotation

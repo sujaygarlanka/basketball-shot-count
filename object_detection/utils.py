@@ -129,6 +129,24 @@ def iou_one_to_many(bbox1, bboxes2, center=False):
     iou_ = area_intersect / (area1 + area2 - area_intersect + EPSILON) #add epsilon to avoid NaN
     return iou_
 
+
+# def convert_videos_to_images(dirpath_for_videos, dirpath_for_images):
+#     num_frames = 16
+#     vidcap = cv2.VideoCapture(video_path)
+#     frames = []
+#     # extract frames
+#     while True:
+#         success, image = vidcap.read()
+#         if not success:
+#             break
+#         frames.append(image)
+#     # downsample if desired and necessary
+#     if num_frames < len(frames):
+#         skip = len(frames) // num_frames
+#         for i in range(0, len(frames), skip):
+#             pass
+#     return
+
 def default_transform_fn(img_size):
     return ComposeWithLabel([PadToSquareWithLabel(fill=(127, 127, 127)),
                              ResizeWithLabel(img_size),
