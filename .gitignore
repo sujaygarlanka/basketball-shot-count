@@ -1,3 +1,4 @@
 .DS_Store
 val2017
 instances_val2017.json
+__pycache__
