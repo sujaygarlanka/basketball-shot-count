@@ -18,9 +18,7 @@ class ConvLayer(nn.Module):
 
     def forward(self, x):
         x = self.conv(x)
-        # print(x)
         x = self.bn(x)
-        # print(x)
         x = self.lrelu(x)
         return x
 

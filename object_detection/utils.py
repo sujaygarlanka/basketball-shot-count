@@ -1,9 +1,10 @@
+import numbers
+import numpy as np
+import re
 import torch
 from torchvision import transforms
 from torchvision.transforms import ToPILImage
 from torchvision.transforms import functional as TF
-import numbers
-import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from config import NUM_CLASSES, EPSILON
@@ -70,10 +71,9 @@ def non_max_suppression(bboxes, scores, classes, num_classes, conf_thres=0.8, nm
 
     # make sure bboxes and scores have the same 0th dimension
     assert bboxes.shape[0] == scores.shape[0] == classes.shape[0]
-    num_prior = bboxes.shape[0]
 
     # if no objects, return raw result
-    if num_prior == 0:
+    if bboxes.shape[0] == 0:
         return bboxes, scores, classes
 
     # threshold out low confidence detection
@@ -82,6 +82,10 @@ def non_max_suppression(bboxes, scores, classes, num_classes, conf_thres=0.8, nm
     bboxes = bboxes.index_select(0, conf_index)
     scores = scores.index_select(0, conf_index)
     classes = classes.index_select(0, conf_index)
+
+    # if no objects after confidence detection, return raw result
+    if (bboxes.shape[0] == 0):
+        return bboxes, scores, classes
 
     bboxes_result = []
     scores_result = []
@@ -128,24 +132,6 @@ def iou_one_to_many(bbox1, bboxes2, center=False):
     area_intersect = w_intersect * h_intersect
     iou_ = area_intersect / (area1 + area2 - area_intersect + EPSILON) #add epsilon to avoid NaN
     return iou_
-
-
-# def convert_videos_to_images(dirpath_for_videos, dirpath_for_images):
-#     num_frames = 16
-#     vidcap = cv2.VideoCapture(video_path)
-#     frames = []
-#     # extract frames
-#     while True:
-#         success, image = vidcap.read()
-#         if not success:
-#             break
-#         frames.append(image)
-#     # downsample if desired and necessary
-#     if num_frames < len(frames):
-#         skip = len(frames) // num_frames
-#         for i in range(0, len(frames), skip):
-#             pass
-#     return
 
 def default_transform_fn(img_size):
     return ComposeWithLabel([PadToSquareWithLabel(fill=(127, 127, 127)),
@@ -233,3 +219,94 @@ class PadToSquareWithLabel(object):
         label[..., 0] += padding[0]
         label[..., 1] += padding[1]
         return img, label
+
+def load_weights_from_original(weightfile, model):
+    #Open the weights file
+    fp = open(weightfile, "rb")
+
+    #The first 5 values are header information 
+    # 1. Major version number
+    # 2. Minor Version Number
+    # 3. Subversion number 
+    # 4,5. Images seen by the network (during training)
+    header = np.fromfile(fp, dtype = np.int32, count = 5)
+    header = torch.from_numpy(header)
+    seen = header[3]
+
+    ptr = 0
+    weights = np.fromfile(fp, dtype = np.float32)
+    state_dict = model.state_dict()
+    state_dict_keys = list(state_dict.keys())
+    i = 0
+    while (i < len(state_dict_keys)):
+        layer_name = state_dict_keys[i]
+        # Finds convolutional layers with batch normalization
+        if ('conv.weight' in layer_name):
+            bn_bias_layer = state_dict[state_dict_keys[i+2]]
+            bn_weight_layer = state_dict[state_dict_keys[i+1]]
+            bn_running_mean_layer = state_dict[state_dict_keys[i+3]]
+            bn_running_var_layer = state_dict[state_dict_keys[i+4]]
+
+            #Get the number of weights of Batch Norm Layer
+            num_bn_biases = bn_bias_layer.numel()
+
+            #Load the weights
+            bn_biases = torch.from_numpy(weights[ptr:ptr + num_bn_biases])
+            ptr += num_bn_biases
+
+            bn_weights = torch.from_numpy(weights[ptr: ptr + num_bn_biases])
+            ptr  += num_bn_biases
+
+            bn_running_mean = torch.from_numpy(weights[ptr: ptr + num_bn_biases])
+            ptr  += num_bn_biases
+
+            bn_running_var = torch.from_numpy(weights[ptr: ptr + num_bn_biases])
+            ptr  += num_bn_biases
+
+            #Cast the loaded weights into dims of model weights. 
+            bn_biases = bn_biases.view_as(bn_bias_layer.data)
+            bn_weights = bn_weights.view_as(bn_weight_layer.data)
+            bn_running_mean = bn_running_mean.view_as(bn_running_mean_layer.data)
+            bn_running_var = bn_running_var.view_as(bn_running_var_layer.data)
+
+            #Copy the data to model
+            bn_bias_layer.data.copy_(bn_biases)
+            bn_weight_layer.data.copy_(bn_weights)
+            bn_running_mean_layer.copy_(bn_running_mean)
+            bn_running_var_layer.copy_(bn_running_var)
+
+            # Get the convolutional layer
+            conv_weights_layer = state_dict[state_dict_keys[i]]
+            # Load weights into the convolutional layer
+            num_weights = conv_weights_layer.numel()
+            conv_weights = torch.from_numpy(weights[ptr:ptr+num_weights])
+            ptr = ptr + num_weights
+            conv_weights = conv_weights.view_as(conv_weights_layer.data)
+            conv_weights_layer.copy_(conv_weights)
+            
+            i += 5
+
+        # Finds convolutional layers without batch normalization
+        elif (bool(re.search("conv[0-9]+\.weight", layer_name))):
+            # Get the bias layer
+            bias_layer = state_dict[state_dict_keys[i+1]]
+            # Load biases into the convolutional layer
+            num_biases = bias_layer.numel()
+            biases = torch.from_numpy(weights[ptr:ptr+num_biases])
+            ptr = ptr + num_biases
+            biases = biases.view_as(bias_layer.data)
+            bias_layer.copy_(biases)
+
+            # Get the convolutional layer
+            conv_weights_layer = state_dict[state_dict_keys[i]]
+            # Load weights into the convolutional layer
+            num_weights = conv_weights_layer.numel()
+            conv_weights = torch.from_numpy(weights[ptr:ptr+num_weights])
+            ptr = ptr + num_weights
+            conv_weights = conv_weights.view_as(conv_weights_layer.data)
+            conv_weights_layer.copy_(conv_weights)
+
+            i += 2
+
+        else:
+            i += 1
