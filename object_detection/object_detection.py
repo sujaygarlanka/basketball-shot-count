@@ -21,7 +21,7 @@ class ObjectDetection():
         self.net.eval()
         self.classes = self.load_classes('./classes.txt')
 
-    def detect(self, images):
+    def detect(self, images, scales, paddings):
         with torch.no_grad():
             detections = self.net(images)
         detections = post_process(detections, True, self.conf_thresh, self.nms_thres)
@@ -71,8 +71,12 @@ if __name__ == "__main__":
     
     # custom_dataset = CocoDetectionBoundingBox('./coco/val2017', './coco/instances_val2017.json', img_size=416)
     # custom_dataloader = DataLoader(custom_dataset, batch_size=1, shuffle=False)
-    
-    image_dataset = ImageFolder('/Users/SujayGarlanka/Projects/ML/basketball_shot_count/object_detection/test')
+    # for i, data in enumerate(custom_dataloader):
+    #     tensor, label = data
+    #     print(label)
+    #     break
+
+    image_dataset = ImageFolder('/Users/SujayGarlanka/Projects/ML/basketball_shot_count/object_detection/sample_images')
     image_dataloader = DataLoader(image_dataset, batch_size=1, shuffle=False)
 
     image_to_show = 0
@@ -80,10 +84,11 @@ if __name__ == "__main__":
         if i == image_to_show:
             file_names, images, scales, paddings = data
 
-            pil_image = transforms.ToPILImage()(images[0])
-            pil_image.show()
+            # Image that is fed into the YOLO v3 object detection network
+            # pil_image = transforms.ToPILImage()(images[0])
+            # pil_image.show()
 
-            detections = net.detect(images)
+            detections = net.detect(images, scales, paddings)
             img = Image.open(file_names[0])
             net.draw_result(img, detections[0], show=True)
             break
