@@ -67,7 +67,7 @@ class ObjectDetection():
 
 if __name__ == "__main__":
     # convert_videos_to_images('/Users/SujayGarlanka/Downloads/Originals/Make','/Users/SujayGarlanka/Projects/ML/basketball_shot_count/object_detection/images_to_label')
-    net = ObjectDetection(conf_thresh=0.4, nms_thresh=0.4)
+    net = ObjectDetection(conf_thresh=0.8, nms_thresh=0.4)
     
     # custom_dataset = CocoDetectionBoundingBox('./coco/val2017', './coco/instances_val2017.json', img_size=416)
     # custom_dataloader = DataLoader(custom_dataset, batch_size=1, shuffle=False)
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     image_dataset = ImageFolder('/Users/SujayGarlanka/Projects/ML/basketball_shot_count/object_detection/sample_images')
     image_dataloader = DataLoader(image_dataset, batch_size=1, shuffle=False)
 
-    image_to_show = 0
+    image_to_show = 8
     for i, data in enumerate(image_dataloader):
         if i == image_to_show:
             file_names, images, scales, paddings = data
