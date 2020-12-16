@@ -1,4 +1,4 @@
-# basketball_shot_count
+# basketball-shot-count
 Counts the number of misses and makes in a video
 
 Object Detection (Yolo V3)
